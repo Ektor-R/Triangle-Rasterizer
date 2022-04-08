@@ -27,13 +27,21 @@ def shade_triangle(img, verts2d, vcolors, shade_t):
     """
         TODO
     """
-    
+
+    # Init variables  
     Ymin = np.empty(3)
     Ymax = np.empty(3)
     sideGradient = np.empty(3)
 
     activeMarginalPoints = np.array([np.nan, np.nan, np.nan])
 
+    # Calculate triangle colour for flat algorithm
+    if shade_t == 'flat':
+        flatColour = np.array([
+            np.sum(vcolors[:,0])/3,
+            np.sum(vcolors[:,1])/3,
+            np.sum(vcolors[:,2])/3
+        ])
 
     for k in range(3):
         sideStart = k
@@ -55,8 +63,7 @@ def shade_triangle(img, verts2d, vcolors, shade_t):
         
         for X in range(round(np.nanmin(activeMarginalPoints)), round(np.nanmax(activeMarginalPoints)) + 1):     # Draw between marginal points
             if shade_t == 'flat':
-                #TODO
-                img[int(Y)][int(X)] = vcolors[0]
+                img[int(Y)][int(X)] = flatColour
             elif shade_t == 'gouraud':
                 #TODO
                 pass
@@ -94,7 +101,7 @@ def render(verts2d, faces, vcolors, depth, shade_t):
         img = shade_triangle(
             img, 
             np.array([ verts2d[face[0]], verts2d[face[1]], verts2d[face[2]] ]),
-            [ vcolors[face[0]], vcolors[face[1]], vcolors[face[2]] ],
+            np.array([ vcolors[face[0]], vcolors[face[1]], vcolors[face[2]] ]),
             shade_t
         )
 
