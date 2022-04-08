@@ -1,0 +1,6 @@
+images/*
+!images/.gitkeep
+
+src/__pycache__/*
+
+.venv/
