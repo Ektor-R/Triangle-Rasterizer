@@ -43,7 +43,7 @@ def shade_triangle(img, verts2d, vcolors, shade_t):
         Ymax[k] = max(verts2d[sideStart][1], verts2d[sideEnd][1])
 
         if verts2d[sideEnd][0] == verts2d[sideStart][0]:
-            sideGradient[k] = 0
+            sideGradient[k] = np.inf
         else:
             sideGradient[k] = (verts2d[sideEnd][1] - verts2d[sideStart][1])/(verts2d[sideEnd][0] - verts2d[sideStart][0])
     
@@ -53,7 +53,7 @@ def shade_triangle(img, verts2d, vcolors, shade_t):
 
     for Y in range(int(Ymin.min()), int(Ymax.max()) + 1):     # Scan line
         
-        for X in range(int(np.nanmin(activeMarginalPoints)), int(np.nanmax(activeMarginalPoints)) + 1):     # Draw between marginal points
+        for X in range(round(np.nanmin(activeMarginalPoints)), round(np.nanmax(activeMarginalPoints)) + 1):     # Draw between marginal points
             if shade_t == 'flat':
                 #TODO
                 img[int(Y)][int(X)] = vcolors[0]
@@ -68,7 +68,7 @@ def shade_triangle(img, verts2d, vcolors, shade_t):
                 activeMarginalPoints[side] = None
 
         for side, point in enumerate(activeMarginalPoints):
-            if point is None:
+            if np.isnan(point) or np.isinf(sideGradient[side]):
                 continue
             activeMarginalPoints[side] = point + 1/sideGradient[side]
 
