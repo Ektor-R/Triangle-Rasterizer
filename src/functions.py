@@ -2,7 +2,7 @@ import numpy as np
 import math
 from src import conf
 
-def interpolate_color(x1, x2, x, C1, C2):
+def interpolate_color(x1: float, x2: float, x: float, C1: np.ndarray, C2: np.ndarray) -> np.ndarray:
     """
         Interpolate colour on a specified point between two points
 
@@ -14,7 +14,7 @@ def interpolate_color(x1, x2, x, C1, C2):
             C2: colour of point no. 2 (x2)
 
         Returns:
-            Array: colour for point x
+            colour for point x
     """
 
     if x1==x2:
@@ -26,18 +26,30 @@ def interpolate_color(x1, x2, x, C1, C2):
 
 
 
-def shade_triangle(img, verts2d, vcolors, shade_t):
+def shade_triangle(img: np.ndarray, verts2d: np.ndarray, vcolors: np.ndarray, shade_t: str) -> np.ndarray:
     """
-        TODO
+        Draw triangle
+
+        Arguments:
+            img: Existing image to draw on
+            verts2d:
+            vcolors:
+            shade_t: flat or gouraud
+        
+        Returns:
+            new image
     """
 
-    # Init variables
-    sidesHaveVerts = np.empty([3,2], 'int')
-    Ymin = np.empty(3)
-    Ymax = np.empty(3)
-    sideGradient = np.empty(3)
+    # Initialise some variables
+    sidesHaveVerts = np.empty([3,2], 'int')     # Index represents each of the three sides. 
+                                                # Values are the indexes for the vertices in verts2d (two for each side)
+    Ymin = np.empty(3)                          # Index -> sides. Values -> Minimum Y coordinate of the two vertices
+    Ymax = np.empty(3)                          # Index -> sides. Values -> Minimum Y coordinate of the two vertices
+    sideGradient = np.empty(3)                  # Index -> sides. Values -> Gradient of each side
 
-    activeMarginalPoints = np.array([np.nan, np.nan, np.nan])
+    activeMarginalPoints = np.array([np.nan, np.nan, np.nan])   # Index represents each of the three sides.
+                                                                # Values are the x coordinate of the point where
+                                                                # scan line meets the side. nan when side is inactive
 
     # Calculate triangle colour for flat algorithm
     if shade_t == 'flat':
@@ -47,26 +59,35 @@ def shade_triangle(img, verts2d, vcolors, shade_t):
             np.sum(vcolors[:,2])/3
         ])
 
+    # Store info for each side.
+        #Sides are:
+        #Side 0: vertice 0 to 1
+        #Side 1: vertice 1 to 0
+        #Side 2: vertice 2 to 0
     for k in range(3):
         sideStart = k
         sidesHaveVerts[k][0] = sideStart
-        sideEnd = (k+1)<=2 and k+1 or 0
+        sideEnd = (k+1)<=2 and k+1 or 0         # If k+1=3: vertice=0
         sidesHaveVerts[k][1] = sideEnd
 
         Ymin[k] = min(verts2d[sideStart][1], verts2d[sideEnd][1])
         Ymax[k] = max(verts2d[sideStart][1], verts2d[sideEnd][1])
 
-        if verts2d[sideEnd][0] == verts2d[sideStart][0]:
+        if verts2d[sideEnd][0] == verts2d[sideStart][0]:    # When side is vertical.
             sideGradient[k] = np.inf
         else:
-            sideGradient[k] = (verts2d[sideEnd][1] - verts2d[sideStart][1])/(verts2d[sideEnd][0] - verts2d[sideStart][0])
+            sideGradient[k] = (                                     # ( yEnd-yStart ) / ( xend-xstart )
+                (verts2d[sideEnd][1] - verts2d[sideStart][1])/
+                (verts2d[sideEnd][0] - verts2d[sideStart][0])
+            )
     
-    activeSides = np.where(Ymin == Ymin.min())[0]   # First 2 sides (first scan line begins on minimum Y)
+    # First scan line begins on minimum Y.
+    activeSides = np.where(Ymin == Ymin.min())[0]
     for side in activeSides:
-        activeMarginalPoints[side] = _getMinXWhereY(verts2d, Ymin[side])
+        activeMarginalPoints[side] = _getMinXWhereY(verts2d, Ymin[side]) #TODO
 
-    for Y in range(int(Ymin.min()), int(Ymax.max()) + 1):     # Scan line
-        
+    # Scan lines from minimum Y to maximum Y
+    for Y in range(int(Ymin.min()), int(Ymax.max()) + 1):  
         # Calculate line colour extremes for gouraud algorithm
         if shade_t == 'gouraud':
             startingLine = np.nanargmin(activeMarginalPoints)
@@ -87,7 +108,9 @@ def shade_triangle(img, verts2d, vcolors, shade_t):
                 vcolors[ sidesHaveVerts[finishLine][1] ])
             pass
 
-        for X in range(round(np.nanmin(activeMarginalPoints)), round(np.nanmax(activeMarginalPoints)) + 1):     # Draw between marginal points
+        # Scan line Y
+        # Draw between min to max marginal points.
+        for X in range(round(np.nanmin(activeMarginalPoints)), round(np.nanmax(activeMarginalPoints)) + 1):
             if shade_t == 'flat':
                 img[int(Y)][int(X)] = flatColour
             elif shade_t == 'gouraud':
@@ -102,15 +125,18 @@ def shade_triangle(img, verts2d, vcolors, shade_t):
 
         # Update active sides and marginal points
         for side in activeSides:
-            if Ymax[side] == Y:
+            if Ymax[side] == Y: # End of this line. Remove it and its marginal point
                 activeSides = np.delete(activeSides, np.where(activeSides == side))
-                activeMarginalPoints[side] = None
+                activeMarginalPoints[side] = np.nan
 
+        # Increase each remaining marginal points by 1/sideGradient
         for side, point in enumerate(activeMarginalPoints):
-            if np.isnan(point) or np.isinf(sideGradient[side]):
+            if np.isnan(point) or np.isinf(sideGradient[side]): # Continue if no point or side is vertical
                 continue
             activeMarginalPoints[side] = point + 1/sideGradient[side]
 
+        # Add sides that have their minY = scanY+1
+        # Add their marginal point
         for side in np.where(Ymin == Y+1)[0]:
             activeSides = np.append(activeSides, side)
             activeMarginalPoints[side] = _getMinXWhereY(verts2d, Y+1)
@@ -121,14 +147,25 @@ def shade_triangle(img, verts2d, vcolors, shade_t):
 
 
 
-def render(verts2d, faces, vcolors, depth, shade_t):
+def render(verts2d: np.ndarray, faces: np.ndarray, vcolors: np.ndarray, depth: np.ndarray, shade_t: str) -> np.ndarray:
     """
-        TODO
+        Render image
+
+        Arguments:
+            verts2d:
+            faces:
+            vcolors:
+            depth:
+            shade_t: flat or gouraud
+
+        Returns:
+            rendered image
     """
 
-    # Init image
+    # Initialize image. Size and background colour is stored in conf.py file
     img = np.full( (conf.M, conf.N, 3) , conf.BACKGROUND)
 
+    # Iterate through sorted faces by descending depth order and draw the triangles
     for face in _sortFaces(faces, depth):
         img = shade_triangle(
             img, 
@@ -141,22 +178,36 @@ def render(verts2d, faces, vcolors, depth, shade_t):
 
 
 
-def _sortFaces(faces, depth):
+def _sortFaces(faces: np.ndarray, depth: np.ndarray) -> np.ndarray:
     """
-        TODO
+        Sort faces by face depth (descending)
+
+        Arguments:
+            faces:
+            depth:
+
+        Returns:
+            faces sorted
     """
     facesDepth = np.empty(np.shape(faces)[0])
 
     for index, face in enumerate(faces):
         facesDepth[index] = ( depth[face[0]] + depth[face[1]] + depth[face[2]] )/3
     
-    return faces[np.argsort(facesDepth)]
+    return faces[np.argsort(-facesDepth)]
 
 
 
-def _getMinXWhereY(verts2d, Y):
+def _getMinXWhereY(verts2d: np.ndarray, Y: float) -> float:
     """
-        TODO
+        Get the minimum X coordinate that matches given Y in a set of points
+
+        Arguments:
+            verts2d:
+            Y: Y coordinate
+
+        Returns:
+            X coordinate
     """
 
     return np.amin(
