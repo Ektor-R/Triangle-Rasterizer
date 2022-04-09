@@ -16,8 +16,11 @@ def interpolate_color(x1, x2, x, C1, C2):
         Returns:
             Array: colour for point x
     """
-    
-    l = abs(x2-x)/abs(x2-x1)
+
+    if x1==x2:
+        l = 1
+    else:    
+        l = abs(x2-x)/abs(x2-x1)
     
     return np.add( np.multiply(l, C1), np.multiply(1-l, C2) )
 
@@ -28,7 +31,8 @@ def shade_triangle(img, verts2d, vcolors, shade_t):
         TODO
     """
 
-    # Init variables  
+    # Init variables
+    sidesHaveVerts = np.empty([3,2], 'int')
     Ymin = np.empty(3)
     Ymax = np.empty(3)
     sideGradient = np.empty(3)
@@ -45,7 +49,9 @@ def shade_triangle(img, verts2d, vcolors, shade_t):
 
     for k in range(3):
         sideStart = k
+        sidesHaveVerts[k][0] = sideStart
         sideEnd = (k+1)<=2 and k+1 or 0
+        sidesHaveVerts[k][1] = sideEnd
 
         Ymin[k] = min(verts2d[sideStart][1], verts2d[sideEnd][1])
         Ymax[k] = max(verts2d[sideStart][1], verts2d[sideEnd][1])
@@ -61,11 +67,37 @@ def shade_triangle(img, verts2d, vcolors, shade_t):
 
     for Y in range(int(Ymin.min()), int(Ymax.max()) + 1):     # Scan line
         
+        # Calculate line colour extremes for gouraud algorithm
+        if shade_t == 'gouraud':
+            startingLine = np.nanargmin(activeMarginalPoints)
+            finishLine = np.nanargmax(activeMarginalPoints)
+
+            scanLineStartColour = interpolate_color(
+                verts2d[ sidesHaveVerts[startingLine][0] ][1],
+                verts2d[ sidesHaveVerts[startingLine][1] ][1],
+                Y,
+                vcolors[ sidesHaveVerts[startingLine][0] ],
+                vcolors[ sidesHaveVerts[startingLine][1] ])
+
+            scanLineEndColour = interpolate_color(
+                verts2d[ sidesHaveVerts[finishLine][0] ][1],
+                verts2d[ sidesHaveVerts[finishLine][1] ][1],
+                Y,
+                vcolors[ sidesHaveVerts[finishLine][0] ],
+                vcolors[ sidesHaveVerts[finishLine][1] ])
+            pass
+
         for X in range(round(np.nanmin(activeMarginalPoints)), round(np.nanmax(activeMarginalPoints)) + 1):     # Draw between marginal points
             if shade_t == 'flat':
                 img[int(Y)][int(X)] = flatColour
             elif shade_t == 'gouraud':
-                #TODO
+                img[int(Y)][int(X)] = interpolate_color(
+                    np.nanmin(activeMarginalPoints),
+                    np.nanmax(activeMarginalPoints),
+                    X,
+                    scanLineStartColour,
+                    scanLineEndColour
+                )
                 pass
 
         # Update active sides and marginal points
@@ -110,6 +142,9 @@ def render(verts2d, faces, vcolors, depth, shade_t):
 
 
 def _sortFaces(faces, depth):
+    """
+        TODO
+    """
     facesDepth = np.empty(np.shape(faces)[0])
 
     for index, face in enumerate(faces):
