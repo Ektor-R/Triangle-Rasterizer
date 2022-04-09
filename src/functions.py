@@ -93,11 +93,11 @@ def render(verts2d, faces, vcolors, depth, shade_t):
     """
         TODO
     """
+
+    # Init image
     img = np.full( (conf.M, conf.N, 3) , conf.BACKGROUND)
 
-    ## TODO sort faces by depth
-
-    for face in faces:
+    for face in _sortFaces(faces, depth):
         img = shade_triangle(
             img, 
             np.array([ verts2d[face[0]], verts2d[face[1]], verts2d[face[2]] ]),
@@ -106,6 +106,16 @@ def render(verts2d, faces, vcolors, depth, shade_t):
         )
 
     return img
+
+
+
+def _sortFaces(faces, depth):
+    facesDepth = np.empty(np.shape(faces)[0])
+
+    for index, face in enumerate(faces):
+        facesDepth[index] = ( depth[face[0]] + depth[face[1]] + depth[face[2]] )/3
+    
+    return faces[np.argsort(facesDepth)]
 
 
 
