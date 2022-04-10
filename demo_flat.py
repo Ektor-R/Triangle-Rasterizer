@@ -19,7 +19,7 @@ img = functions.render(
 
 cv2.imwrite(
     'images/img-flat-' + datetime.now().strftime("%Y-%m-%d-%H-%M-%S") + '.jpg',
-    cv2.cvtColor( (img*255).astype(np.uint8), cv2.COLOR_BGR2RGB)
+    cv2.cvtColor( (img*255).astype(np.uint8), cv2.COLOR_RGB2BGR)
 )
 
 print("--- %s seconds ---" % (time.time() - startTime))

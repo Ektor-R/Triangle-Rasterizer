@@ -1,6 +1,9 @@
 import numpy as np
-import math
-from src import conf
+
+# Conf
+BACKGROUND = [1., 1., 1.]
+M = 512
+N = 512
 
 def interpolate_color(x1: float, x2: float, x: float, C1: np.ndarray, C2: np.ndarray) -> np.ndarray:
     """
@@ -84,10 +87,16 @@ def shade_triangle(img: np.ndarray, verts2d: np.ndarray, vcolors: np.ndarray, sh
     # First scan line begins on minimum Y.
     activeSides = np.where(Ymin == Ymin.min())[0]
     for side in activeSides:
-        activeMarginalPoints[side] = _getMinXWhereY(verts2d, Ymin[side]) #TODO
+        activeMarginalPoints[side] = min(
+            verts2d[
+                sidesHaveVerts[side][
+                    np.where( verts2d[ sidesHaveVerts[side] ][:,1] == Ymin.min() )
+                ]
+            ][:,0]
+        )
 
     # Scan lines from minimum Y to maximum Y
-    for Y in range(int(Ymin.min()), int(Ymax.max()) + 1):  
+    for Y in range(int(Ymin.min()), int(Ymax.max()) + 1): 
         # Calculate line colour extremes for gouraud algorithm
         if shade_t == 'gouraud':
             startingLine = np.nanargmin(activeMarginalPoints)
@@ -106,7 +115,6 @@ def shade_triangle(img: np.ndarray, verts2d: np.ndarray, vcolors: np.ndarray, sh
                 Y,
                 vcolors[ sidesHaveVerts[finishLine][0] ],
                 vcolors[ sidesHaveVerts[finishLine][1] ])
-            pass
 
         # Scan line Y
         # Draw between min to max marginal points.
@@ -139,7 +147,13 @@ def shade_triangle(img: np.ndarray, verts2d: np.ndarray, vcolors: np.ndarray, sh
         # Add their marginal point
         for side in np.where(Ymin == Y+1)[0]:
             activeSides = np.append(activeSides, side)
-            activeMarginalPoints[side] = _getMinXWhereY(verts2d, Y+1)
+            activeMarginalPoints[side] = min(
+            verts2d[
+                sidesHaveVerts[side][
+                    np.where( verts2d[ sidesHaveVerts[side] ][:,1] == (Y+1) )
+                ]
+            ][:,0]
+        )
 
     return img
 
@@ -162,8 +176,8 @@ def render(verts2d: np.ndarray, faces: np.ndarray, vcolors: np.ndarray, depth: n
             rendered image
     """
 
-    # Initialize image. Size and background colour is stored in conf.py file
-    img = np.full( (conf.M, conf.N, 3) , conf.BACKGROUND)
+    # Initialize image. Size and background colour is stored in constants
+    img = np.full( (M, N, 3) , BACKGROUND)
 
     # Iterate through sorted faces by descending depth order and draw the triangles
     for face in _sortFaces(faces, depth):
@@ -195,23 +209,3 @@ def _sortFaces(faces: np.ndarray, depth: np.ndarray) -> np.ndarray:
         facesDepth[index] = ( depth[face[0]] + depth[face[1]] + depth[face[2]] )/3
     
     return faces[np.argsort(-facesDepth)]
-
-
-
-def _getMinXWhereY(verts2d: np.ndarray, Y: float) -> float:
-    """
-        Get the minimum X coordinate that matches given Y in a set of points
-
-        Arguments:
-            verts2d:
-            Y: Y coordinate
-
-        Returns:
-            X coordinate
-    """
-
-    return np.amin(
-        verts2d[
-            np.where(verts2d[:,1] == Y)[0]
-        ][:,0]
-    )
