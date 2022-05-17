@@ -97,39 +97,42 @@ def shade_triangle(img: np.ndarray, verts2d: np.ndarray, vcolors: np.ndarray, sh
 
     # Scan lines from minimum Y to maximum Y
     for Y in range(int(Ymin.min()), int(Ymax.max()) + 1): 
-        # Calculate line colour extremes for gouraud algorithm
-        if shade_t == 'gouraud':
-            startingLine = np.nanargmin(activeMarginalPoints)
-            finishLine = np.nanargmax(activeMarginalPoints)
+        # Clip if out of image size
+        if 0 <= Y < np.shape(img)[0]:
+            # Calculate line colour extremes for gouraud algorithm
+            if shade_t == 'gouraud':
+                startingLine = np.nanargmin(activeMarginalPoints)
+                finishLine = np.nanargmax(activeMarginalPoints)
 
-            scanLineStartColour = interpolate_color(
-                verts2d[ sidesHaveVerts[startingLine][0] ][1],
-                verts2d[ sidesHaveVerts[startingLine][1] ][1],
-                Y,
-                vcolors[ sidesHaveVerts[startingLine][0] ],
-                vcolors[ sidesHaveVerts[startingLine][1] ])
+                scanLineStartColour = interpolate_color(
+                    verts2d[ sidesHaveVerts[startingLine][0] ][1],
+                    verts2d[ sidesHaveVerts[startingLine][1] ][1],
+                    Y,
+                    vcolors[ sidesHaveVerts[startingLine][0] ],
+                    vcolors[ sidesHaveVerts[startingLine][1] ])
 
-            scanLineEndColour = interpolate_color(
-                verts2d[ sidesHaveVerts[finishLine][0] ][1],
-                verts2d[ sidesHaveVerts[finishLine][1] ][1],
-                Y,
-                vcolors[ sidesHaveVerts[finishLine][0] ],
-                vcolors[ sidesHaveVerts[finishLine][1] ])
+                scanLineEndColour = interpolate_color(
+                    verts2d[ sidesHaveVerts[finishLine][0] ][1],
+                    verts2d[ sidesHaveVerts[finishLine][1] ][1],
+                    Y,
+                    vcolors[ sidesHaveVerts[finishLine][0] ],
+                    vcolors[ sidesHaveVerts[finishLine][1] ])
 
-        # Scan line Y
-        # Draw between min to max marginal points.
-        for X in range(round(np.nanmin(activeMarginalPoints)), round(np.nanmax(activeMarginalPoints)) + 1):
-            if shade_t == 'flat':
-                img[int(Y)][int(X)] = flatColour
-            elif shade_t == 'gouraud':
-                img[int(Y)][int(X)] = interpolate_color(
-                    np.nanmin(activeMarginalPoints),
-                    np.nanmax(activeMarginalPoints),
-                    X,
-                    scanLineStartColour,
-                    scanLineEndColour
-                )
-                pass
+            # Scan line Y
+            # Draw between min to max marginal points.
+            for X in range(round(np.nanmin(activeMarginalPoints)), round(np.nanmax(activeMarginalPoints)) + 1):
+                # Clip if out of image size
+                if 0 <= X < np.shape(img)[1]:
+                    if shade_t == 'flat':
+                        img[int(Y)][int(X)] = flatColour
+                    elif shade_t == 'gouraud':
+                        img[int(Y)][int(X)] = interpolate_color(
+                            np.nanmin(activeMarginalPoints),
+                            np.nanmax(activeMarginalPoints),
+                            X,
+                            scanLineStartColour,
+                            scanLineEndColour
+                        )
 
         # Update active sides and marginal points
         for side in activeSides:
